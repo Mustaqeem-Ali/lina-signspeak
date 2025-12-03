@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
-import { Video, VideoOff, Hand, Camera } from 'lucide-react';
+import { VideoOff, Hand, Camera, Loader2 } from 'lucide-react';
 
 interface VideoStageProps {
   onHandsDetected?: (detected: boolean) => void;
@@ -29,8 +29,12 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
 
     // Initialize camera
     useEffect(() => {
+      let mounted = true;
+      
       const initCamera = async () => {
         setIsInitializing(true);
+        console.log('[VideoStage] Initializing camera...');
+        
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
             video: {
@@ -41,25 +45,62 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
             audio: false,
           });
 
+          if (!mounted) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+
           streamRef.current = stream;
+          console.log('[VideoStage] Stream obtained:', stream.id);
           
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
+            
+            // Wait for video to be ready
+            await new Promise<void>((resolve, reject) => {
+              const video = videoRef.current!;
+              video.onloadedmetadata = () => {
+                console.log('[VideoStage] Video metadata loaded');
+                resolve();
+              };
+              video.onerror = () => reject(new Error('Video element error'));
+              setTimeout(() => reject(new Error('Video load timeout')), 5000);
+            });
+            
             await videoRef.current.play();
-            setIsCameraReady(true);
-            setCameraError(null);
+            console.log('[VideoStage] Video playing');
+            
+            if (mounted) {
+              setIsCameraReady(true);
+              setCameraError(null);
+            }
           }
         } catch (error) {
-          console.error('Camera error:', error);
-          setCameraError('Unable to access camera. Please grant permission and refresh.');
+          console.error('[VideoStage] Camera error:', error);
+          if (mounted) {
+            if (error instanceof DOMException) {
+              if (error.name === 'NotAllowedError') {
+                setCameraError('Camera access denied. Please allow camera permission.');
+              } else if (error.name === 'NotFoundError') {
+                setCameraError('No camera found. Please connect a camera.');
+              } else {
+                setCameraError(`Camera error: ${error.message}`);
+              }
+            } else {
+              setCameraError('Unable to access camera. Please check permissions.');
+            }
+          }
         } finally {
-          setIsInitializing(false);
+          if (mounted) {
+            setIsInitializing(false);
+          }
         }
       };
 
       initCamera();
 
       return () => {
+        mounted = false;
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
         }
@@ -98,7 +139,7 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
           handDetectorRef.current = handLandmarker;
           startDetection();
         } catch (error) {
-          console.error('Hand detection init error:', error);
+          console.error('[VideoStage] Hand detection init error:', error);
         }
       };
 
@@ -135,22 +176,22 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
     }, [isAutoMode, isCameraReady, onHandsDetected]);
 
     return (
-      <div className="relative w-full max-w-4xl mx-auto">
+      <div className="relative w-full max-w-4xl mx-auto px-4">
         {/* Main video container */}
-        <div className="video-container relative aspect-[4/3] bg-surface">
+        <div className="video-container relative aspect-[4/3] bg-surface min-h-[300px] sm:min-h-[400px]">
           {isInitializing ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center animate-pulse">
-                <Camera className="w-8 h-8 text-muted-foreground" />
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
               </div>
-              <p className="text-muted-foreground text-center">Initializing camera...</p>
+              <p className="text-muted-foreground text-center">Starting camera...</p>
             </div>
           ) : cameraError ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
               <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center">
                 <VideoOff className="w-8 h-8 text-destructive" />
               </div>
-              <p className="text-muted-foreground text-center max-w-xs">{cameraError}</p>
+              <p className="text-muted-foreground text-center max-w-xs text-sm">{cameraError}</p>
               <button
                 onClick={() => window.location.reload()}
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
@@ -165,7 +206,7 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover transform scale-x-[-1]"
+                className="w-full h-full object-cover transform scale-x-[-1] bg-surface-elevated"
               />
               <canvas
                 ref={canvasRef}

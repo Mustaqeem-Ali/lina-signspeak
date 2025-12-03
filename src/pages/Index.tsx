@@ -29,15 +29,18 @@ export default function Index() {
     stopRecording,
   } = useRecorder();
 
-  // Check for API key on mount
+  // Check for API key on mount - delay modal so video can initialize first
   useEffect(() => {
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) {
       setApiKey(savedKey);
-      // Set it in window for the service to use
       (window as any).__GEMINI_API_KEY__ = savedKey;
     } else if (!isApiKeyConfigured()) {
-      setShowApiKeyModal(true);
+      // Delay showing modal so user sees the interface first
+      const timer = setTimeout(() => {
+        setShowApiKeyModal(true);
+      }, 1500);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -154,7 +157,7 @@ export default function Index() {
 
       <div className="min-h-screen bg-background flex flex-col">
         {/* Header */}
-        <header className="flex items-center justify-between px-6 py-4">
+        <header className="flex items-center justify-between px-6 py-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-google-green flex items-center justify-center">
               <span className="text-lg font-bold text-primary-foreground">L</span>
@@ -177,8 +180,8 @@ export default function Index() {
           </button>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1 flex flex-col items-center justify-center px-4 pb-32 pt-4">
+        {/* Main content - Video always visible */}
+        <main className="flex-1 flex flex-col items-center justify-center pb-40 pt-4">
           <VideoStage
             ref={videoStageRef}
             onHandsDetected={handleHandsDetected}
@@ -187,7 +190,7 @@ export default function Index() {
         </main>
 
         {/* Translation Card - Fixed position */}
-        <div className="fixed bottom-28 right-6 z-40">
+        <div className="fixed bottom-28 right-4 sm:right-6 z-40 max-w-[calc(100vw-2rem)]">
           <TranslationCard
             text={translatedText}
             isLoading={isProcessing}
@@ -198,7 +201,7 @@ export default function Index() {
         </div>
 
         {/* Control Dock - Fixed position */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
           <ControlDock
             isRecording={isRecording}
             isAutoMode={isAutoMode}
@@ -209,7 +212,7 @@ export default function Index() {
           />
         </div>
 
-        {/* API Key Modal */}
+        {/* API Key Modal - Only shows after delay */}
         <ApiKeyModal
           isOpen={showApiKeyModal}
           onClose={() => setShowApiKeyModal(false)}
