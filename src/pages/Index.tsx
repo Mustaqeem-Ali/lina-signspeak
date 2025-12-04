@@ -5,7 +5,7 @@ import TranslationCard from '@/components/TranslationCard';
 import ApiKeyModal from '@/components/ApiKeyModal';
 import { useRecorder } from '@/hooks/useRecorder';
 import { translateSignLanguage, isApiKeyConfigured } from '@/services/gemini';
-import { textToSpeech, playAudioBlob, playPingSound } from '@/services/tts';
+import { textToSpeech, playAudioBlob, playPingSound, playRecordingStartSound, playRecordingStopSound } from '@/services/tts';
 import { Helmet } from 'react-helmet-async';
 
 const HAND_DISAPPEAR_DELAY = 2500; // 2.5 seconds
@@ -100,6 +100,7 @@ export default function Index() {
       if (stream) {
         setError(null);
         setTranslatedText(null);
+        playRecordingStartSound();
         startRecording(stream);
       }
     } else {
@@ -116,6 +117,7 @@ export default function Index() {
       clearTimeout(handDisappearTimerRef.current);
       handDisappearTimerRef.current = null;
     }
+    playRecordingStopSound();
     const blob = await stopRecording();
     if (blob && blob.size > 0) {
       processVideo(blob);
@@ -148,6 +150,7 @@ export default function Index() {
         const stream = videoStageRef.current?.getStream();
         if (stream) {
           setIsWaitingForHands(false);
+          playRecordingStartSound();
           startRecording(stream);
         }
       }
@@ -158,6 +161,7 @@ export default function Index() {
         if (stream) {
           setError(null);
           setTranslatedText(null);
+          playRecordingStartSound();
           startRecording(stream);
         }
       }
@@ -166,6 +170,7 @@ export default function Index() {
       if (isRecording && !handDisappearTimerRef.current) {
         handDisappearTimerRef.current = setTimeout(async () => {
           setIsWaitingForHands(false);
+          playRecordingStopSound();
           const blob = await stopRecording();
           if (blob && blob.size > 0) {
             processVideo(blob);
