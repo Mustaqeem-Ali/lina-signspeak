@@ -49,7 +49,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
 
 export async function translateSignLanguage(videoBlob: Blob): Promise<string> {
   const ai = getGenAI();
-  const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = ai.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const base64Video = await blobToBase64(videoBlob);
   const mimeType = videoBlob.type || 'video/webm';
