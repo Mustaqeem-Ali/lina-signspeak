@@ -206,8 +206,8 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
                 autoPlay
                 playsInline
                 muted
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-                className="bg-black"
+                className="absolute inset-0 w-full h-full object-cover bg-black"
+                style={{ transform: 'scaleX(-1)' }}
               />
               <canvas
                 ref={canvasRef}
