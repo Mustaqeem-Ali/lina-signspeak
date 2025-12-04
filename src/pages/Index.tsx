@@ -22,6 +22,8 @@ export default function Index() {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
+  const [handsCurrentlyDetected, setHandsCurrentlyDetected] = useState(false);
+  const [isWaitingForHands, setIsWaitingForHands] = useState(false); // Manual mode: waiting for hands to start
 
   const {
     isRecording,
@@ -90,16 +92,30 @@ export default function Index() {
     }
   }, []);
 
+  // Manual mode: User clicks record -> wait for hands -> start recording -> hands disappear -> stop & process
   const handleStartRecording = useCallback(() => {
-    const stream = videoStageRef.current?.getStream();
-    if (stream) {
+    if (handsCurrentlyDetected) {
+      // Hands already visible - start recording immediately
+      const stream = videoStageRef.current?.getStream();
+      if (stream) {
+        setError(null);
+        setTranslatedText(null);
+        startRecording(stream);
+      }
+    } else {
+      // Wait for hands to appear
+      setIsWaitingForHands(true);
       setError(null);
       setTranslatedText(null);
-      startRecording(stream);
     }
-  }, [startRecording]);
+  }, [startRecording, handsCurrentlyDetected]);
 
   const handleStopRecording = useCallback(async () => {
+    setIsWaitingForHands(false);
+    if (handDisappearTimerRef.current) {
+      clearTimeout(handDisappearTimerRef.current);
+      handDisappearTimerRef.current = null;
+    }
     const blob = await stopRecording();
     if (blob && blob.size > 0) {
       processVideo(blob);
@@ -116,7 +132,9 @@ export default function Index() {
   }, []);
 
   const handleHandsDetected = useCallback((detected: boolean) => {
-    if (!isAutoMode || isProcessing) return;
+    setHandsCurrentlyDetected(detected);
+    
+    if (isProcessing) return;
 
     if (detected) {
       // Clear disappear timer if hands reappear
@@ -125,8 +143,17 @@ export default function Index() {
         handDisappearTimerRef.current = null;
       }
 
-      // Start recording if not already
-      if (!isRecording) {
+      // Manual mode: waiting for hands to start recording
+      if (isWaitingForHands && !isRecording) {
+        const stream = videoStageRef.current?.getStream();
+        if (stream) {
+          setIsWaitingForHands(false);
+          startRecording(stream);
+        }
+      }
+
+      // Auto mode: start recording if not already
+      if (isAutoMode && !isRecording && !isWaitingForHands) {
         const stream = videoStageRef.current?.getStream();
         if (stream) {
           setError(null);
@@ -135,9 +162,10 @@ export default function Index() {
         }
       }
     } else {
-      // Hands disappeared - start timer to stop recording
+      // Hands disappeared - start timer to stop recording (both modes)
       if (isRecording && !handDisappearTimerRef.current) {
         handDisappearTimerRef.current = setTimeout(async () => {
+          setIsWaitingForHands(false);
           const blob = await stopRecording();
           if (blob && blob.size > 0) {
             processVideo(blob);
@@ -146,7 +174,7 @@ export default function Index() {
         }, HAND_DISAPPEAR_DELAY);
       }
     }
-  }, [isAutoMode, isProcessing, isRecording, startRecording, stopRecording, processVideo]);
+  }, [isAutoMode, isProcessing, isRecording, isWaitingForHands, startRecording, stopRecording, processVideo]);
 
   return (
     <>
@@ -206,6 +234,7 @@ export default function Index() {
             isRecording={isRecording}
             isAutoMode={isAutoMode}
             isProcessing={isProcessing}
+            isWaitingForHands={isWaitingForHands}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
             onToggleAutoMode={handleToggleAutoMode}
