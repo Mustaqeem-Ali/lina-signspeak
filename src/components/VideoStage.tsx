@@ -110,9 +110,9 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
       };
     }, []);
 
-    // Initialize hand detection when auto mode is enabled
+    // Initialize hand detection - always active for smart recording
     useEffect(() => {
-      if (!isAutoMode || !isCameraReady) {
+      if (!isCameraReady) {
         if (animationFrameRef.current) {
           cancelAnimationFrame(animationFrameRef.current);
         }
@@ -173,7 +173,7 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
           cancelAnimationFrame(animationFrameRef.current);
         }
       };
-    }, [isAutoMode, isCameraReady, onHandsDetected]);
+    }, [isCameraReady, onHandsDetected]);
 
     return (
       <div className="relative w-full max-w-4xl mx-auto px-4">
@@ -227,8 +227,8 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
             </div>
           )}
 
-          {/* Hand detection indicator */}
-          {isAutoMode && isCameraReady && (
+          {/* Hand detection indicator - always visible */}
+          {isCameraReady && (
             <div className={`absolute top-4 right-4 flex items-center gap-2 glass rounded-full px-3 py-1.5 transition-all duration-300 ${
               handsDetected ? 'bg-google-green/20' : 'bg-surface-glass/5'
             }`}>

@@ -11,6 +11,7 @@ interface ControlDockProps {
   isRecording: boolean;
   isAutoMode: boolean;
   isProcessing: boolean;
+  isWaitingForHands?: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onToggleAutoMode: () => void;
@@ -20,6 +21,7 @@ export default function ControlDock({
   isRecording,
   isAutoMode,
   isProcessing,
+  isWaitingForHands = false,
   onStartRecording,
   onStopRecording,
   onToggleAutoMode,
@@ -50,19 +52,23 @@ export default function ControlDock({
       {/* Record Button */}
       {!isAutoMode && (
         <button
-          onClick={isRecording ? onStopRecording : onStartRecording}
+          onClick={isRecording || isWaitingForHands ? onStopRecording : onStartRecording}
           disabled={isProcessing}
           className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 ${
             isRecording 
               ? 'bg-destructive hover:bg-destructive/90 ring-4 ring-destructive/30' 
+              : isWaitingForHands
+              ? 'bg-google-yellow/20 ring-4 ring-google-yellow/30'
               : 'glass hover:bg-white/20'
           } ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
-          title={isRecording ? 'Stop Recording' : 'Start Recording'}
+          title={isRecording ? 'Stop Recording' : isWaitingForHands ? 'Cancel' : 'Start Recording'}
         >
           {isProcessing ? (
             <Loader2 className="w-6 h-6 text-foreground animate-spin" />
           ) : isRecording ? (
             <Square className="w-5 h-5 text-destructive-foreground fill-current" />
+          ) : isWaitingForHands ? (
+            <Hand className="w-5 h-5 text-google-yellow animate-pulse" />
           ) : (
             <Circle className="w-6 h-6 text-destructive fill-destructive" />
           )}
@@ -110,6 +116,8 @@ export default function ControlDock({
           <span className="text-primary">Analyzing...</span>
         ) : isRecording ? (
           <span className="text-destructive">Recording</span>
+        ) : isWaitingForHands ? (
+          <span className="text-google-yellow">Show hands...</span>
         ) : isAutoMode ? (
           <span className="text-muted-foreground">Auto Mode</span>
         ) : (
