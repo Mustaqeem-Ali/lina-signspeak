@@ -4,6 +4,7 @@ import { VideoOff, Hand, Camera, Loader2 } from 'lucide-react';
 interface VideoStageProps {
   onHandsDetected?: (detected: boolean) => void;
   isAutoMode?: boolean;
+  isRecording?: boolean;
 }
 
 export interface VideoStageHandle {
@@ -11,7 +12,7 @@ export interface VideoStageHandle {
 }
 
 const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
-  ({ onHandsDetected, isAutoMode = false }, ref) => {
+  ({ onHandsDetected, isAutoMode = false, isRecording = false }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -178,7 +179,9 @@ const VideoStage = forwardRef<VideoStageHandle, VideoStageProps>(
     return (
       <div className="relative w-full max-w-4xl mx-auto px-4">
         {/* Main video container */}
-        <div className="video-container relative aspect-[4/3] bg-surface min-h-[300px] sm:min-h-[400px]">
+        <div className={`video-container relative aspect-[4/3] bg-surface min-h-[300px] sm:min-h-[400px] transition-all duration-300 ${
+          isRecording ? 'recording-border' : ''
+        }`}>
           {isInitializing ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8">
               <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">

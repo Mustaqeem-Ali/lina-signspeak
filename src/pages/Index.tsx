@@ -214,6 +214,7 @@ export default function Index() {
             ref={videoStageRef}
             onHandsDetected={handleHandsDetected}
             isAutoMode={isAutoMode}
+            isRecording={isRecording}
           />
         </main>
 
