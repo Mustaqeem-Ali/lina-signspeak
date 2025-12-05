@@ -47,8 +47,11 @@ export async function fetchVoices(): Promise<VoicesResponse> {
   }
 }
 
-// Generate speech from text using the new API spec
-export async function textToSpeech(text: string, speaker: string = 'p225'): Promise<TTSResult> {
+// Generate speech from text using strict request-response pattern
+export async function textToSpeech(text: string, speaker: string = 'p225', timeoutMs: number = 10000): Promise<TTSResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
     const response = await fetch(`${TTS_BACKEND_URL}/tts`, {
       method: 'POST',
@@ -60,7 +63,10 @@ export async function textToSpeech(text: string, speaker: string = 'p225'): Prom
         text,
         speaker,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`TTS server error: ${response.status}`);
@@ -70,6 +76,7 @@ export async function textToSpeech(text: string, speaker: string = 'p225'): Prom
     const generationTime = response.headers.get('X-Generation-Time') || '0.00';
     const usedSpeaker = response.headers.get('X-Used-Speaker') || speaker;
 
+    // Wait for entire audio blob (no streaming)
     const audioBlob = await response.blob();
     
     return {
@@ -80,6 +87,12 @@ export async function textToSpeech(text: string, speaker: string = 'p225'): Prom
       },
     };
   } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('TTS Generation Timed Out');
+    }
+    
     console.error('TTS error:', error);
     
     if (error instanceof TypeError && error.message.includes('fetch')) {

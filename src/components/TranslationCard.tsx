@@ -8,6 +8,7 @@ interface TranslationCardProps {
   error: string | null;
   audioBlob: Blob | null;
   isPlayingAudio: boolean;
+  isGeneratingAudio?: boolean;
   ttsMetadata?: TTSMetadata | null;
 }
 
@@ -17,6 +18,7 @@ export default function TranslationCard({
   error,
   audioBlob,
   isPlayingAudio,
+  isGeneratingAudio,
   ttsMetadata,
 }: TranslationCardProps) {
   const [copied, setCopied] = useState(false);
@@ -147,28 +149,34 @@ export default function TranslationCard({
         ) : null}
       </div>
 
-      {/* Audio Visualizer */}
-      {(isPlayingAudio || audioBlob) && !error && (
+      {/* Audio Visualizer / Generating State */}
+      {(isGeneratingAudio || isPlayingAudio || audioBlob) && !error && (
         <div className="mt-3 pt-3 border-t border-white/10">
           <div className="flex items-center gap-2">
-            {isPlayingAudio ? (
+            {isGeneratingAudio ? (
+              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+            ) : isPlayingAudio ? (
               <Volume2 className="w-4 h-4 text-google-green" />
             ) : (
               <VolumeX className="w-4 h-4 text-muted-foreground" />
             )}
-            <div className="flex-1 flex items-center justify-center gap-0.5 h-8">
-              {audioLevels.map((level, index) => (
-                <div
-                  key={index}
-                  className="audio-bar w-1"
-                  style={{
-                    height: `${level * 100}%`,
-                    opacity: isPlayingAudio ? 1 : 0.3,
-                    transition: 'height 50ms ease-out',
-                  }}
-                />
-              ))}
-            </div>
+            {isGeneratingAudio ? (
+              <span className="text-xs text-muted-foreground">Generating audio...</span>
+            ) : (
+              <div className="flex-1 flex items-center justify-center gap-0.5 h-8">
+                {audioLevels.map((level, index) => (
+                  <div
+                    key={index}
+                    className="audio-bar w-1"
+                    style={{
+                      height: `${level * 100}%`,
+                      opacity: isPlayingAudio ? 1 : 0.3,
+                      transition: 'height 50ms ease-out',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
