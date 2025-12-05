@@ -5,8 +5,17 @@ import TranslationCard from '@/components/TranslationCard';
 import ApiKeyModal from '@/components/ApiKeyModal';
 import { useRecorder } from '@/hooks/useRecorder';
 import { translateSignLanguage, isApiKeyConfigured } from '@/services/gemini';
-import { textToSpeech, playAudioBlob, playPingSound, playRecordingStartSound, playRecordingStopSound } from '@/services/tts';
+import { 
+  textToSpeech, 
+  playAudioBlob, 
+  playPingSound, 
+  playRecordingStartSound, 
+  playRecordingStopSound,
+  fetchVoices,
+  TTSMetadata 
+} from '@/services/tts';
 import { Helmet } from 'react-helmet-async';
+import { toast } from '@/hooks/use-toast';
 
 const HAND_DISAPPEAR_DELAY = 2500; // 2.5 seconds
 
@@ -23,13 +32,30 @@ export default function Index() {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKey, setApiKey] = useState<string>('');
   const [handsCurrentlyDetected, setHandsCurrentlyDetected] = useState(false);
-  const [isWaitingForHands, setIsWaitingForHands] = useState(false); // Manual mode: waiting for hands to start
+  const [isWaitingForHands, setIsWaitingForHands] = useState(false);
+  
+  // Voice selection state
+  const [selectedVoice, setSelectedVoice] = useState<string>('p225');
+  const [ttsMetadata, setTtsMetadata] = useState<TTSMetadata | null>(null);
 
   const {
     isRecording,
     startRecording,
     stopRecording,
   } = useRecorder();
+
+  // Fetch default voice on mount
+  useEffect(() => {
+    const loadDefaultVoice = async () => {
+      try {
+        const data = await fetchVoices();
+        setSelectedVoice(data.default_speaker);
+      } catch (err) {
+        console.warn('Failed to fetch default voice, using fallback:', err);
+      }
+    };
+    loadDefaultVoice();
+  }, []);
 
   // Check for API key on mount - delay modal so video can initialize first
   useEffect(() => {
@@ -58,22 +84,24 @@ export default function Index() {
     setError(null);
     setTranslatedText(null);
     setAudioBlob(null);
+    setTtsMetadata(null);
 
     try {
       // Step 1: Translate with Gemini
       const text = await translateSignLanguage(videoBlob);
       setTranslatedText(text);
 
-      // Step 2: Convert to speech
+      // Step 2: Convert to speech with selected voice
       try {
-        const audio = await textToSpeech(text);
-        setAudioBlob(audio);
+        const result = await textToSpeech(text, selectedVoice);
+        setAudioBlob(result.audioBlob);
+        setTtsMetadata(result.metadata);
 
         // Play ping then audio
         playPingSound();
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        const audioElement = playAudioBlob(audio);
+        const audioElement = playAudioBlob(result.audioBlob);
         setIsPlayingAudio(true);
         
         audioElement.onended = () => {
@@ -81,7 +109,11 @@ export default function Index() {
         };
       } catch (ttsError) {
         console.warn('TTS failed:', ttsError);
-        // Don't set error - translation still succeeded
+        toast({
+          title: 'TTS Failed',
+          description: ttsError instanceof Error ? ttsError.message : 'Could not generate speech',
+          variant: 'destructive',
+        });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -90,7 +122,7 @@ export default function Index() {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [selectedVoice]);
 
   // Manual mode: User clicks record -> wait for hands -> start recording -> hands disappear -> stop & process
   const handleStartRecording = useCallback(() => {
@@ -100,6 +132,7 @@ export default function Index() {
       if (stream) {
         setError(null);
         setTranslatedText(null);
+        setTtsMetadata(null);
         playRecordingStartSound();
         startRecording(stream);
       }
@@ -108,6 +141,7 @@ export default function Index() {
       setIsWaitingForHands(true);
       setError(null);
       setTranslatedText(null);
+      setTtsMetadata(null);
     }
   }, [startRecording, handsCurrentlyDetected]);
 
@@ -161,6 +195,7 @@ export default function Index() {
         if (stream) {
           setError(null);
           setTranslatedText(null);
+          setTtsMetadata(null);
           playRecordingStartSound();
           startRecording(stream);
         }
@@ -180,6 +215,10 @@ export default function Index() {
       }
     }
   }, [isAutoMode, isProcessing, isRecording, isWaitingForHands, startRecording, stopRecording, processVideo]);
+
+  const handleVoiceChange = useCallback((voiceId: string) => {
+    setSelectedVoice(voiceId);
+  }, []);
 
   return (
     <>
@@ -231,6 +270,7 @@ export default function Index() {
             error={error}
             audioBlob={audioBlob}
             isPlayingAudio={isPlayingAudio}
+            ttsMetadata={ttsMetadata}
           />
         </div>
 
@@ -241,6 +281,8 @@ export default function Index() {
             isAutoMode={isAutoMode}
             isProcessing={isProcessing}
             isWaitingForHands={isWaitingForHands}
+            selectedVoice={selectedVoice}
+            onVoiceChange={handleVoiceChange}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
             onToggleAutoMode={handleToggleAutoMode}

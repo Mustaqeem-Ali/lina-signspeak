@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Copy, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Volume2, VolumeX, Copy, Check, AlertCircle, Loader2, Clock, User } from 'lucide-react';
+import { TTSMetadata } from '@/services/tts';
 
 interface TranslationCardProps {
   text: string | null;
@@ -7,6 +8,7 @@ interface TranslationCardProps {
   error: string | null;
   audioBlob: Blob | null;
   isPlayingAudio: boolean;
+  ttsMetadata?: TTSMetadata | null;
 }
 
 export default function TranslationCard({
@@ -15,6 +17,7 @@ export default function TranslationCard({
   error,
   audioBlob,
   isPlayingAudio,
+  ttsMetadata,
 }: TranslationCardProps) {
   const [copied, setCopied] = useState(false);
   const [audioLevels, setAudioLevels] = useState<number[]>(Array(12).fill(0.2));
@@ -165,6 +168,22 @@ export default function TranslationCard({
                   }}
                 />
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug Info - TTS Metadata */}
+      {ttsMetadata && !error && (
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3" />
+              <span>Gen: {ttsMetadata.generationTime}s</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <User className="w-3 h-3" />
+              <span>Speaker: {ttsMetadata.usedSpeaker}</span>
             </div>
           </div>
         </div>

@@ -6,12 +6,15 @@ import {
   Settings,
   Loader2
 } from 'lucide-react';
+import VoiceSelector from './VoiceSelector';
 
 interface ControlDockProps {
   isRecording: boolean;
   isAutoMode: boolean;
   isProcessing: boolean;
   isWaitingForHands?: boolean;
+  selectedVoice: string;
+  onVoiceChange: (voiceId: string) => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onToggleAutoMode: () => void;
@@ -22,12 +25,24 @@ export default function ControlDock({
   isAutoMode,
   isProcessing,
   isWaitingForHands = false,
+  selectedVoice,
+  onVoiceChange,
   onStartRecording,
   onStopRecording,
   onToggleAutoMode,
 }: ControlDockProps) {
   return (
     <div className="dock animate-slide-up">
+      {/* Voice Selector */}
+      <VoiceSelector
+        selectedVoice={selectedVoice}
+        onVoiceChange={onVoiceChange}
+        disabled={isRecording || isProcessing}
+      />
+
+      {/* Divider */}
+      <div className="w-px h-8 bg-white/10" />
+
       {/* Auto Mode Toggle */}
       <button
         onClick={onToggleAutoMode}

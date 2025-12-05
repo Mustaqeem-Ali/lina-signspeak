@@ -1,20 +1,64 @@
-const TTS_BACKEND_URL = 'http://localhost:8000/tts';
+const TTS_BACKEND_URL = 'http://localhost:8000';
 
-export interface TTSRequest {
-  text: string;
-  speaker_id?: string;
+export interface Speaker {
+  id: string;
+  gender: string;
 }
 
-export async function textToSpeech(text: string, speakerId: string = 'p225'): Promise<Blob> {
+export interface VoicesResponse {
+  speakers: Speaker[];
+  default_speaker: string;
+  default_gender: string;
+}
+
+export interface TTSMetadata {
+  generationTime: string;
+  usedSpeaker: string;
+}
+
+export interface TTSResult {
+  audioBlob: Blob;
+  metadata: TTSMetadata;
+}
+
+// Fetch available voices from the backend
+export async function fetchVoices(): Promise<VoicesResponse> {
   try {
-    const response = await fetch(TTS_BACKEND_URL, {
+    const response = await fetch(`${TTS_BACKEND_URL}/voices`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch voices: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Fetch voices error:', error);
+    
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Cannot connect to TTS server. Make sure the Python backend is running on localhost:8000');
+    }
+    
+    throw error;
+  }
+}
+
+// Generate speech from text using the new API spec
+export async function textToSpeech(text: string, speaker: string = 'p225'): Promise<TTSResult> {
+  try {
+    const response = await fetch(`${TTS_BACKEND_URL}/tts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'audio/wav',
       },
       body: JSON.stringify({
         text,
-        speaker_id: speakerId,
+        speaker,
       }),
     });
 
@@ -22,8 +66,19 @@ export async function textToSpeech(text: string, speakerId: string = 'p225'): Pr
       throw new Error(`TTS server error: ${response.status}`);
     }
 
+    // Extract metadata from response headers
+    const generationTime = response.headers.get('X-Generation-Time') || '0.00';
+    const usedSpeaker = response.headers.get('X-Used-Speaker') || speaker;
+
     const audioBlob = await response.blob();
-    return audioBlob;
+    
+    return {
+      audioBlob,
+      metadata: {
+        generationTime,
+        usedSpeaker,
+      },
+    };
   } catch (error) {
     console.error('TTS error:', error);
     
