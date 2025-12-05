@@ -37,6 +37,7 @@ export default function Index() {
   // Voice selection state
   const [selectedVoice, setSelectedVoice] = useState<string>('p225');
   const [ttsMetadata, setTtsMetadata] = useState<TTSMetadata | null>(null);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
 
   const {
     isRecording,
@@ -93,13 +94,14 @@ export default function Index() {
 
       // Step 2: Convert to speech with selected voice
       try {
+        // Play ping immediately for instant feedback before waiting for TTS
+        playPingSound();
+        setIsGeneratingAudio(true);
+        
         const result = await textToSpeech(text, selectedVoice);
+        setIsGeneratingAudio(false);
         setAudioBlob(result.audioBlob);
         setTtsMetadata(result.metadata);
-
-        // Play ping then audio
-        playPingSound();
-        await new Promise(resolve => setTimeout(resolve, 200));
         
         const audioElement = playAudioBlob(result.audioBlob);
         setIsPlayingAudio(true);
@@ -108,6 +110,7 @@ export default function Index() {
           setIsPlayingAudio(false);
         };
       } catch (ttsError) {
+        setIsGeneratingAudio(false);
         console.warn('TTS failed:', ttsError);
         toast({
           title: 'TTS Failed',
@@ -270,6 +273,7 @@ export default function Index() {
             error={error}
             audioBlob={audioBlob}
             isPlayingAudio={isPlayingAudio}
+            isGeneratingAudio={isGeneratingAudio}
             ttsMetadata={ttsMetadata}
           />
         </div>
